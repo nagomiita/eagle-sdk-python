@@ -22,7 +22,7 @@ class ApplicationInfo:
     version: str
     prerelease_version: str | None
     build_version: str
-    exec_path: str
+    exec_path: str | None
     platform: str
 
     @classmethod
@@ -31,8 +31,8 @@ class ApplicationInfo:
         return cls(
             version=d["version"],
             prerelease_version=d.get("prerelease_version"),
-            build_version=d["build_version"],
-            exec_path=d["exec_path"],
+            build_version=d.get("build_version", ""),
+            exec_path=d.get("exec_path"),
             platform=d["platform"],
         )
 
