@@ -114,6 +114,35 @@ items = client.item.list(limit=50, tags=["design"])
 | `tags` | str | No | タグフィルタ（カンマ区切り） |
 | `folders` | str | No | フォルダフィルタ（カンマ区切り） |
 
+## 開発環境セットアップ
+
+本プロジェクトはパッケージマネージャーに [uv](https://docs.astral.sh/uv/) を使用しています。
+
+```bash
+# リポジトリのクローン
+git clone https://github.com/your-username/eagle-sdk-python.git
+cd eagle-sdk-python
+
+# 依存関係のインストール（仮想環境の作成も自動で行われます）
+uv sync
+
+# テストの実行
+uv run pytest
+
+# パッケージのビルド
+uv build
+```
+
+### 依存パッケージの追加
+
+```bash
+# ランタイム依存
+uv add <package-name>
+
+# 開発用依存
+uv add --dev <package-name>
+```
+
 ## ライセンス
 
 MIT License
