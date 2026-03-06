@@ -60,8 +60,10 @@ items = client.item.list(limit=50, tags=["design"])
 | `item.add_from_paths()` | `POST /api/item/addFromPaths` | ローカルファイルを一括追加 |
 | `item.add_bookmark()` | `POST /api/item/addBookmark` | ブックマークを追加 |
 | `item.info()` | `GET /api/item/info` | アイテムの詳細情報を取得 |
+| `item.thumbnail()` | `GET /api/item/thumbnail` | サムネイル画像のパスを取得 |
 | `item.update()` | `POST /api/item/update` | アイテム情報を更新 |
 | `item.list()` | `GET /api/item/list` | アイテム一覧を取得（フィルタ対応） |
+| `item.move_to_trash()` | `POST /api/item/moveToTrash` | アイテムをゴミ箱に移動 |
 | `item.refresh_palette()` | `POST /api/item/refreshPalette` | カラーパレットを再解析 |
 | `item.refresh_thumbnail()` | `POST /api/item/refreshThumbnail` | サムネイルを再生成 |
 
@@ -82,6 +84,7 @@ items = client.item.list(limit=50, tags=["design"])
 | `library.info()` | `GET /api/library/info` | 現在のライブラリ情報を取得 |
 | `library.history()` | `GET /api/library/history` | 最近開いたライブラリ一覧を取得 |
 | `library.switch()` | `POST /api/library/switch` | ライブラリを切り替え |
+| `library.icon()` | `GET /api/library/icon` | ライブラリのアイコン画像を取得 |
 
 ## 主要パラメータ
 
