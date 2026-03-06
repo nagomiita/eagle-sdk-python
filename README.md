@@ -37,7 +37,7 @@ client.item.add_from_url(
 )
 
 # アイテム一覧を取得
-items = client.item.list(limit=50, tags=["design"])
+items = client.item.list(limit=50, tags="design")
 ```
 
 ## API リファレンス
