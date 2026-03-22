@@ -11,6 +11,8 @@ from eagle_sdk.models import (
     ItemDetail,
     LibraryInfo,
     Palette,
+    TagGroupInfo,
+    TagInfo,
 )
 
 __all__ = [
@@ -24,6 +26,8 @@ __all__ = [
     "Folder",
     "FolderListItem",
     "LibraryInfo",
+    "TagInfo",
+    "TagGroupInfo",
     "AddItemFromUrlParam",
     "AddItemFromPathParam",
 ]

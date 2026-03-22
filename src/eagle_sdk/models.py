@@ -183,6 +183,52 @@ class LibraryInfo:
 # Parameter TypedDicts
 # ──────────────────────────────────────────────
 
+# ──────────────────────────────────────────────
+# Tag
+# ──────────────────────────────────────────────
+
+@dataclass
+class TagInfo:
+    name: str
+    count: int
+    starred: bool
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TagInfo:
+        d = _convert_keys(data)
+        return cls(
+            name=d.get("name", ""),
+            count=d.get("count", 0),
+            starred=d.get("starred", False),
+        )
+
+
+# ──────────────────────────────────────────────
+# Tag Group
+# ──────────────────────────────────────────────
+
+@dataclass
+class TagGroupInfo:
+    id: str
+    name: str
+    tags: list[str]
+    color: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TagGroupInfo:
+        d = _convert_keys(data)
+        return cls(
+            id=d["id"],
+            name=d.get("name", ""),
+            tags=d.get("tags", []),
+            color=d.get("color", ""),
+        )
+
+
+# ──────────────────────────────────────────────
+# Parameter TypedDicts
+# ──────────────────────────────────────────────
+
 class AddItemFromUrlParam(TypedDict, total=False):
     url: Required[str]
     name: Required[str]

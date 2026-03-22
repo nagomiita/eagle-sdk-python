@@ -144,6 +144,7 @@ class ItemAPI:
         annotation: str | None = None,
         url: str | None = None,
         star: int | None = None,
+        folders: list[str] | None = None,
     ) -> ItemDetail:
         body: dict[str, Any] = {"id": id}
         if tags is not None:
@@ -154,8 +155,35 @@ class ItemAPI:
             body["url"] = url
         if star is not None:
             body["star"] = star
-        resp = self._http.post("/api/item/update", json=body)
+        if folders is not None:
+            body["folders"] = folders
+        resp = self._http.post("/api/v2/item/update", json=body)
         return ItemDetail.from_dict(resp["data"])
+
+    def query(
+        self,
+        keyword: str,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ItemDetail]:
+        body: dict[str, Any] = {"keyword": keyword}
+        if limit is not None:
+            body["limit"] = limit
+        if offset is not None:
+            body["offset"] = offset
+        resp = self._http.post("/api/v2/item/query", json=body)
+        return [ItemDetail.from_dict(item) for item in resp["data"]]
+
+    def count_all(self) -> int:
+        resp = self._http.get("/api/v2/item/countAll")
+        return resp["data"]
+
+    def set_custom_thumbnail(self, id: str, path: str) -> None:
+        self._http.post(
+            "/api/v2/item/setCustomThumbnail",
+            json={"id": id, "path": path},
+        )
 
     def list(
         self,

@@ -4,6 +4,8 @@ from eagle_sdk.api.application import ApplicationAPI
 from eagle_sdk.api.folder import FolderAPI
 from eagle_sdk.api.item import ItemAPI
 from eagle_sdk.api.library import LibraryAPI
+from eagle_sdk.api.tag import TagAPI
+from eagle_sdk.api.tag_group import TagGroupAPI
 from eagle_sdk.http import HttpClient
 
 
@@ -18,6 +20,8 @@ class EagleClient:
         self._item = ItemAPI(self._http)
         self._folder = FolderAPI(self._http)
         self._library = LibraryAPI(self._http)
+        self._tag = TagAPI(self._http)
+        self._tag_group = TagGroupAPI(self._http)
 
     @property
     def application(self) -> ApplicationAPI:
@@ -34,6 +38,14 @@ class EagleClient:
     @property
     def library(self) -> LibraryAPI:
         return self._library
+
+    @property
+    def tag(self) -> TagAPI:
+        return self._tag
+
+    @property
+    def tag_group(self) -> TagGroupAPI:
+        return self._tag_group
 
     def close(self) -> None:
         self._http.close()
