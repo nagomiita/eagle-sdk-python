@@ -4,6 +4,8 @@ from eagle_sdk.client import EagleClient
 from eagle_sdk.exceptions import EagleApiError, EagleConnectionError, EagleError
 from eagle_sdk.models import (
     AddItemFromPathParam,
+    AddItemResult,
+    AddItemsResult,
     AddItemFromUrlParam,
     ApplicationInfo,
     Folder,
@@ -30,4 +32,6 @@ __all__ = [
     "TagGroupInfo",
     "AddItemFromUrlParam",
     "AddItemFromPathParam",
+    "AddItemResult",
+    "AddItemsResult",
 ]

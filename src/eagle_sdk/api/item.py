@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from eagle_sdk.models import AddItemFromPathParam, AddItemFromUrlParam, ItemDetail
+from eagle_sdk.models import (
+    AddItemFromPathParam,
+    AddItemFromUrlParam,
+    AddItemResult,
+    AddItemsResult,
+    ItemDetail,
+)
 
 if TYPE_CHECKING:
     from eagle_sdk.http import HttpClient
@@ -18,11 +24,35 @@ def _build_item_url_body(param: AddItemFromUrlParam) -> dict[str, Any]:
     return body
 
 
-def _build_item_path_body(param: AddItemFromPathParam) -> dict[str, Any]:
+def _resolve_item_folders(
+    *,
+    folder_id: str | None = None,
+    folders: list[str] | None = None,
+) -> list[str] | None:
+    if folder_id is not None and folders is not None:
+        raise ValueError("folder_id and folders cannot be used together")
+    if folders is not None:
+        return folders
+    if folder_id is not None:
+        return [folder_id]
+    return None
+
+
+def _build_item_path_body(
+    param: AddItemFromPathParam,
+    *,
+    folder_id: str | None = None,
+) -> dict[str, Any]:
     body: dict[str, Any] = {"path": param["path"], "name": param["name"]}
-    for key in ("website", "tags", "annotation"):
+    for key in ("id", "website", "tags", "annotation"):
         if key in param:
             body[key] = param[key]
+    folders = _resolve_item_folders(
+        folder_id=folder_id,
+        folders=param.get("folders"),
+    )
+    if folders is not None:
+        body["folders"] = folders
     return body
 
 
@@ -78,34 +108,41 @@ class ItemAPI:
         path: str,
         name: str,
         *,
+        id: str | None = None,
         website: str | None = None,
         annotation: str | None = None,
         tags: list[str] | None = None,
         folder_id: str | None = None,
-    ) -> None:
+        folders: list[str] | None = None,
+    ) -> AddItemResult:
         body: dict[str, Any] = {"path": path, "name": name}
+        if id is not None:
+            body["id"] = id
         if website is not None:
             body["website"] = website
         if annotation is not None:
             body["annotation"] = annotation
         if tags is not None:
             body["tags"] = tags
-        if folder_id is not None:
-            body["folderId"] = folder_id
-        self._http.post("/api/item/addFromPath", json=body)
+        resolved_folders = _resolve_item_folders(folder_id=folder_id, folders=folders)
+        if resolved_folders is not None:
+            body["folders"] = resolved_folders
+        resp = self._http.post("/api/v2/item/add", json=body)
+        return AddItemResult.from_dict(resp["data"])
 
     def add_from_paths(
         self,
         items: list[AddItemFromPathParam],
         *,
         folder_id: str | None = None,
-    ) -> None:
+    ) -> AddItemsResult:
         body: dict[str, Any] = {
-            "items": [_build_item_path_body(item) for item in items],
+            "items": [
+                _build_item_path_body(item, folder_id=folder_id) for item in items
+            ],
         }
-        if folder_id is not None:
-            body["folderId"] = folder_id
-        self._http.post("/api/item/addFromPaths", json=body)
+        resp = self._http.post("/api/v2/item/add", json=body)
+        return AddItemsResult.from_dict(resp["data"])
 
     def add_bookmark(
         self,

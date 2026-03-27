@@ -87,23 +87,71 @@ class TestItemAddFromUrls:
 class TestItemAddFromPath:
     def test_basic(self, client: EagleClient, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
-            url="http://localhost:41595/api/item/addFromPath",
-            json={"status": "success"},
+            url="http://localhost:41595/api/v2/item/add",
+            json={"status": "success", "data": {"id": "ITEM1"}},
         )
-        client.item.add_from_path(path="/tmp/test.jpg", name="Test")
+        result = client.item.add_from_path(path="/tmp/test.jpg", name="Test")
 
         request = httpx_mock.get_request()
         body = json.loads(request.content)
         assert body["path"] == "/tmp/test.jpg"
+        assert body["name"] == "Test"
+        assert result.id == "ITEM1"
+
+    def test_with_custom_id_and_folders(
+        self, client: EagleClient, httpx_mock: HTTPXMock
+    ):
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/v2/item/add",
+            json={"status": "success", "data": {"id": "CUSTOM1"}},
+        )
+        result = client.item.add_from_path(
+            path="/tmp/test.jpg",
+            name="Test",
+            id="CUSTOM1",
+            folders=["F1", "F2"],
+        )
+
+        request = httpx_mock.get_request()
+        body = json.loads(request.content)
+        assert body["id"] == "CUSTOM1"
+        assert body["folders"] == ["F1", "F2"]
+        assert result.id == "CUSTOM1"
+
+    def test_folder_id_is_converted_to_folders(
+        self, client: EagleClient, httpx_mock: HTTPXMock
+    ):
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/v2/item/add",
+            json={"status": "success", "data": {"id": "ITEM2"}},
+        )
+        client.item.add_from_path(
+            path="/tmp/test.jpg",
+            name="Test",
+            folder_id="FOLDER1",
+        )
+
+        request = httpx_mock.get_request()
+        body = json.loads(request.content)
+        assert body["folders"] == ["FOLDER1"]
+
+    def test_folder_id_conflicts_with_folders(self, client: EagleClient):
+        with pytest.raises(ValueError):
+            client.item.add_from_path(
+                path="/tmp/test.jpg",
+                name="Test",
+                folder_id="FOLDER1",
+                folders=["FOLDER2"],
+            )
 
 
 class TestItemAddFromPaths:
     def test_basic(self, client: EagleClient, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
-            url="http://localhost:41595/api/item/addFromPaths",
-            json={"status": "success"},
+            url="http://localhost:41595/api/v2/item/add",
+            json={"status": "success", "data": {"ids": ["ID1", "ID2"]}},
         )
-        client.item.add_from_paths(
+        result = client.item.add_from_paths(
             [
                 {"path": "/tmp/1.jpg", "name": "One"},
                 {"path": "/tmp/2.jpg", "name": "Two"},
@@ -113,6 +161,40 @@ class TestItemAddFromPaths:
         request = httpx_mock.get_request()
         body = json.loads(request.content)
         assert len(body["items"]) == 2
+        assert result.ids == ["ID1", "ID2"]
+
+    def test_folder_id_is_applied_to_each_item(
+        self, client: EagleClient, httpx_mock: HTTPXMock
+    ):
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/v2/item/add",
+            json={"status": "success", "data": {"ids": ["ID1", "ID2"]}},
+        )
+        client.item.add_from_paths(
+            [
+                {"path": "/tmp/1.jpg", "name": "One"},
+                {"path": "/tmp/2.jpg", "name": "Two"},
+            ],
+            folder_id="FOLDER1",
+        )
+
+        request = httpx_mock.get_request()
+        body = json.loads(request.content)
+        assert body["items"][0]["folders"] == ["FOLDER1"]
+        assert body["items"][1]["folders"] == ["FOLDER1"]
+
+    def test_folder_id_conflicts_with_item_folders(self, client: EagleClient):
+        with pytest.raises(ValueError):
+            client.item.add_from_paths(
+                [
+                    {
+                        "path": "/tmp/1.jpg",
+                        "name": "One",
+                        "folders": ["FOLDER2"],
+                    }
+                ],
+                folder_id="FOLDER1",
+            )
 
 
 class TestItemAddBookmark:
@@ -163,7 +245,7 @@ class TestItemThumbnail:
 class TestItemUpdate:
     def test_update(self, client: EagleClient, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
-            url="http://localhost:41595/api/item/update",
+            url="http://localhost:41595/api/v2/item/update",
             json={"status": "success", "data": ITEM_RESPONSE},
         )
 

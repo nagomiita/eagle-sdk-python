@@ -36,6 +36,13 @@ client.item.add_from_url(
     tags=["design", "sample"]
 )
 
+# ローカルファイルを追加して新規 item id を受け取る
+result = client.item.add_from_path(
+    path="/tmp/sample.png",
+    name="Local Sample",
+)
+print(result.id)
+
 # アイテム一覧を取得
 items = client.item.list(limit=50, tags="design")
 ```
@@ -56,8 +63,8 @@ items = client.item.list(limit=50, tags="design")
 |---------|-----------------|------|
 | `item.add_from_url()` | `POST /api/item/addFromURL` | URLから画像を追加 |
 | `item.add_from_urls()` | `POST /api/item/addFromURLs` | URLから複数画像を一括追加 |
-| `item.add_from_path()` | `POST /api/item/addFromPath` | ローカルファイルを追加 |
-| `item.add_from_paths()` | `POST /api/item/addFromPaths` | ローカルファイルを一括追加 |
+| `item.add_from_path()` | `POST /api/v2/item/add` | ローカルファイルを追加して結果の `id` を返す |
+| `item.add_from_paths()` | `POST /api/v2/item/add` | ローカルファイルを一括追加して結果の `ids` を返す |
 | `item.add_bookmark()` | `POST /api/item/addBookmark` | ブックマークを追加 |
 | `item.info()` | `GET /api/item/info` | アイテムの詳細情報を取得 |
 | `item.thumbnail()` | `GET /api/item/thumbnail` | サムネイル画像のパスを取得 |

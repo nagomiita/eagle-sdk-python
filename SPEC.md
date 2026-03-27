@@ -94,8 +94,8 @@ class EagleApiError(EagleError): ...        # APIがエラーを返した
 |---------|---------|--------|-----|
 | `add_from_url(url, name, ...)` | url: str, name: str, website?, tags?, star?, annotation?, modification_time?, folder_id?, headers? | `None` | `POST /api/item/addFromURL` |
 | `add_from_urls(items, folder_id?)` | items: list[AddItemFromUrlParam], folder_id? | `None` | `POST /api/item/addFromURLs` |
-| `add_from_path(path, name, ...)` | path: str, name: str, website?, annotation?, tags?, folder_id? | `None` | `POST /api/item/addFromPath` |
-| `add_from_paths(items, folder_id?)` | items: list[AddItemFromPathParam], folder_id? | `None` | `POST /api/item/addFromPaths` |
+| `add_from_path(path, name, ...)` | path: str, name: str, id?, website?, annotation?, tags?, folder_id?, folders? | `AddItemResult` | `POST /api/v2/item/add` |
+| `add_from_paths(items, folder_id?)` | items: list[AddItemFromPathParam], folder_id? | `AddItemsResult` | `POST /api/v2/item/add` |
 | `add_bookmark(url, name, ...)` | url: str, name: str, base64?, tags?, modification_time?, folder_id? | `None` | `POST /api/item/addBookmark` |
 | `info(id)` | id: str | `ItemDetail` | `GET /api/item/info` |
 | `thumbnail(id)` | id: str | `str` | `GET /api/item/thumbnail` |
@@ -160,6 +160,14 @@ class ItemDetail:
     star: int | None = None
 
 @dataclass
+class AddItemResult:
+    id: str
+
+@dataclass
+class AddItemsResult:
+    ids: list[str]
+
+@dataclass
 class Folder:
     id: str
     name: str
@@ -208,9 +216,11 @@ class AddItemFromUrlParam(TypedDict, total=False):
 class AddItemFromPathParam(TypedDict, total=False):
     path: Required[str]
     name: Required[str]
+    id: str
     website: str
     tags: list[str]
     annotation: str
+    folders: list[str]
 ```
 
 ## camelCase → snake_case 変換ルール

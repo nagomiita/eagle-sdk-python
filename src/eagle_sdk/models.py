@@ -93,6 +93,26 @@ class ItemDetail:
         )
 
 
+@dataclass
+class AddItemResult:
+    id: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AddItemResult:
+        d = _convert_keys(data)
+        return cls(id=d["id"])
+
+
+@dataclass
+class AddItemsResult:
+    ids: list[str]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AddItemsResult:
+        d = _convert_keys(data)
+        return cls(ids=d.get("ids", []))
+
+
 # ──────────────────────────────────────────────
 # Folder
 # ──────────────────────────────────────────────
@@ -242,6 +262,8 @@ class AddItemFromUrlParam(TypedDict, total=False):
 class AddItemFromPathParam(TypedDict, total=False):
     path: Required[str]
     name: Required[str]
+    id: str
     website: str
     tags: list[str]
     annotation: str
+    folders: list[str]
