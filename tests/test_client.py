@@ -21,6 +21,14 @@ class TestEagleClient:
         assert isinstance(client.folder, FolderAPI)
         assert isinstance(client.library, LibraryAPI)
 
+    def test_token_is_set_as_default_param(self):
+        client = EagleClient(token="my-secret-token")
+        assert client._http._client.params["token"] == "my-secret-token"
+
+    def test_no_token_by_default(self):
+        client = EagleClient()
+        assert "token" not in client._http._client.params
+
     def test_context_manager(self):
         with EagleClient() as client:
             assert isinstance(client, EagleClient)

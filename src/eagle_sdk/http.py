@@ -8,8 +8,9 @@ from eagle_sdk.exceptions import EagleApiError, EagleConnectionError
 
 
 class HttpClient:
-    def __init__(self, base_url: str, timeout: float) -> None:
-        self._client = httpx.Client(base_url=base_url, timeout=timeout)
+    def __init__(self, base_url: str, timeout: float, token: str | None = None) -> None:
+        params = {"token": token} if token else None
+        self._client = httpx.Client(base_url=base_url, timeout=timeout, params=params)
 
     def get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("GET", path, params=params)

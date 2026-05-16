@@ -14,8 +14,9 @@ class EagleClient:
         self,
         base_url: str = "http://localhost:41595",
         timeout: float = 30.0,
+        token: str | None = None,
     ) -> None:
-        self._http = HttpClient(base_url=base_url, timeout=timeout)
+        self._http = HttpClient(base_url=base_url, timeout=timeout, token=token)
         self._application = ApplicationAPI(self._http)
         self._item = ItemAPI(self._http)
         self._folder = FolderAPI(self._http)

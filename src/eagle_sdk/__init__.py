@@ -2,6 +2,7 @@
 
 from eagle_sdk.client import EagleClient
 from eagle_sdk.exceptions import EagleApiError, EagleConnectionError, EagleError
+from eagle_sdk.wsl import resolve_base_url
 from eagle_sdk.models import (
     AddItemFromPathParam,
     AddItemResult,
@@ -22,6 +23,7 @@ __all__ = [
     "EagleError",
     "EagleConnectionError",
     "EagleApiError",
+    "resolve_base_url",
     "ApplicationInfo",
     "Palette",
     "ItemDetail",
