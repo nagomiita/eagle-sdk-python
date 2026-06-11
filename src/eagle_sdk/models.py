@@ -185,10 +185,15 @@ class LibraryInfo:
     tags_groups: list[dict[str, Any]]
     modification_time: int
     application_version: str
+    # /api/library/info の data.library から取得する、現在 Eagle が開いている
+    # ライブラリのネイティブパスと名前 (古い Eagle がフィールドを返さない場合は None)
+    library_path: str | None = None
+    library_name: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> LibraryInfo:
         d = _convert_keys(data)
+        library = d.get("library") or {}
         return cls(
             folders=d.get("folders", []),
             smart_folders=d.get("smart_folders", []),
@@ -196,6 +201,8 @@ class LibraryInfo:
             tags_groups=d.get("tags_groups", []),
             modification_time=d.get("modification_time", 0),
             application_version=d.get("application_version", ""),
+            library_path=library.get("path"),
+            library_name=library.get("name"),
         )
 
 

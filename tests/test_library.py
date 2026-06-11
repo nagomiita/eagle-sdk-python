@@ -12,6 +12,7 @@ LIBRARY_INFO_RESPONSE = {
     "tagsGroups": [{"id": "TG1", "name": "Style", "tags": ["Modern"], "color": "blue"}],
     "modificationTime": 1592409993367,
     "applicationVersion": "1.11.0",
+    "library": {"path": "D:\\eagle.library", "name": "eagle"},
 }
 
 
@@ -29,6 +30,22 @@ class TestLibraryInfo:
         assert len(info.quick_access) == 1
         assert len(info.tags_groups) == 1
         assert info.application_version == "1.11.0"
+        assert info.library_path == "D:\\eagle.library"
+        assert info.library_name == "eagle"
+
+    def test_info_without_library_field(
+        self, client: EagleClient, httpx_mock: HTTPXMock
+    ):
+        response = {k: v for k, v in LIBRARY_INFO_RESPONSE.items() if k != "library"}
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/library/info",
+            json={"status": "success", "data": response},
+        )
+
+        info = client.library.info()
+
+        assert info.library_path is None
+        assert info.library_name is None
 
 
 class TestLibraryHistory:
