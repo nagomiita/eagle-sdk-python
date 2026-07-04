@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
+from eagle_sdk._util import compact_body
 from eagle_sdk.models import TagGroupInfo
 
 if TYPE_CHECKING:
@@ -17,9 +18,7 @@ class TagGroupAPI:
         return [TagGroupInfo.from_dict(g) for g in resp["data"]]
 
     def create(self, name: str, *, color: str | None = None) -> TagGroupInfo:
-        body: dict[str, Any] = {"name": name}
-        if color is not None:
-            body["color"] = color
+        body = compact_body(name=name, color=color)
         resp = self._http.post("/api/v2/tagGroup/create", json=body)
         return TagGroupInfo.from_dict(resp["data"])
 
@@ -30,11 +29,7 @@ class TagGroupAPI:
         name: str | None = None,
         color: str | None = None,
     ) -> None:
-        body: dict[str, Any] = {"id": id}
-        if name is not None:
-            body["name"] = name
-        if color is not None:
-            body["color"] = color
+        body = compact_body(id=id, name=name, color=color)
         self._http.post("/api/v2/tagGroup/update", json=body)
 
     def remove(self, id: str) -> None:

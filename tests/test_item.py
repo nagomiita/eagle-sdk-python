@@ -401,3 +401,17 @@ class TestItemIterAll:
         assert len(httpx_mock.get_requests()) == 0
         next(it)
         assert len(httpx_mock.get_requests()) == 1
+
+
+class TestItemAddFromUrlsStar:
+    def test_star_is_sent_per_item(self, client: EagleClient, httpx_mock: HTTPXMock):
+        # #5: AddItemFromUrlParam に star を追加し add_from_url と項目を揃えた
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/item/addFromURLs",
+            json={"status": "success"},
+        )
+        client.item.add_from_urls(
+            [{"url": "https://example.com/a.png", "name": "a", "star": 5}]
+        )
+        body = json.loads(httpx_mock.get_request().content)
+        assert body["items"][0]["star"] == 5

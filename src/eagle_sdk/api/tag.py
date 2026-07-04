@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
+from eagle_sdk._util import compact_body
 from eagle_sdk.models import TagInfo
 
 if TYPE_CHECKING:
@@ -13,9 +14,7 @@ class TagAPI:
         self._http = http
 
     def get(self, *, keyword: str | None = None) -> list[TagInfo]:
-        params: dict[str, Any] = {}
-        if keyword is not None:
-            params["keyword"] = keyword
+        params = compact_body(keyword=keyword)
         resp = self._http.get("/api/v2/tag/get", params=params or None)
         return [TagInfo.from_dict(t) for t in resp["data"]]
 
