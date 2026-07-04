@@ -94,6 +94,32 @@ class TestHttpStatusErrors:
         # httpx.HTTPStatusError (token 入り URL を含む) をチェーンしていないこと
         assert exc_info.value.__cause__ is None
 
+    def test_status_error_preserves_json_body_as_data(self, httpx_mock: HTTPXMock):
+        httpx_mock.add_response(
+            status_code=400,
+            json={"status": "error", "message": "Invalid token"},
+        )
+
+        client = EagleClient()
+        with pytest.raises(EagleApiError) as exc_info:
+            client.application.info()
+
+        assert exc_info.value.data == {
+            "status": "error",
+            "message": "Invalid token",
+        }
+
+    def test_status_error_with_non_json_body_has_none_data(
+        self, httpx_mock: HTTPXMock
+    ):
+        httpx_mock.add_response(status_code=502, content=b"<html>Bad Gateway</html>")
+
+        client = EagleClient()
+        with pytest.raises(EagleApiError) as exc_info:
+            client.application.info()
+
+        assert exc_info.value.data is None
+
     def test_get_bytes_status_error_raises_eagle_api_error(
         self, httpx_mock: HTTPXMock
     ):

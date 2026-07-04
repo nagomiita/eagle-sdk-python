@@ -124,6 +124,10 @@ class HttpClient:
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError:
+            try:
+                body: Any = response.json()
+            except ValueError:
+                body = None
             # httpx.HTTPStatusError の str には ?token=... 入りの完全 URL が
             # 含まれるため、チェーンせずマスク済みメッセージで raise する
             raise EagleApiError(
@@ -132,6 +136,7 @@ class HttpClient:
                 f" {response.reason_phrase}:"
                 f" {method} {_mask_token_in_url(response.request.url)}",
                 status_code=response.status_code,
+                data=body,
             ) from None
         return response
 
