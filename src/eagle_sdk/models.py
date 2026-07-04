@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field, fields
 from functools import lru_cache
-from typing import Any, Required, TypedDict
+from typing import Any, Required, TypedDict, TypeVar
 
 
 # キーは API レスポンスの固定語彙 (modificationTime 等の十数種) なので
@@ -18,29 +18,36 @@ def _convert_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {_to_snake_case(k): v for k, v in data.items()}
 
 
+_T = TypeVar("_T", bound="_FromDict")
+
+
+class _FromDict:
+    """レスポンス dict → dataclass の共通変換 (#5)。
+
+    トップレベルキーを snake_case 化し、dataclass に定義されたフィールド
+    だけを拾って構築する。欠損キーのデフォルトはフィールド定義側に一元化
+    する (from_dict 側での d.get(..., default) 二重管理をなくす)。
+    """
+
+    @classmethod
+    def from_dict(cls: type[_T], data: dict[str, Any]) -> _T:
+        d = _convert_keys(data)
+        names = {f.name for f in fields(cls)}  # type: ignore[arg-type]
+        return cls(**{k: v for k, v in d.items() if k in names})
+
+
 # ──────────────────────────────────────────────
 # Application
 # ──────────────────────────────────────────────
 
 
 @dataclass
-class ApplicationInfo:
+class ApplicationInfo(_FromDict):
     version: str
-    prerelease_version: str | None
-    build_version: str
-    exec_path: str | None
     platform: str
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ApplicationInfo:
-        d = _convert_keys(data)
-        return cls(
-            version=d["version"],
-            prerelease_version=d.get("prerelease_version"),
-            build_version=d.get("build_version", ""),
-            exec_path=d.get("exec_path"),
-            platform=d["platform"],
-        )
+    prerelease_version: str | None = None
+    build_version: str = ""
+    exec_path: str | None = None
 
 
 # ──────────────────────────────────────────────
@@ -49,75 +56,47 @@ class ApplicationInfo:
 
 
 @dataclass
-class Palette:
+class Palette(_FromDict):
     color: list[int]
     ratio: float
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Palette:
-        return cls(color=data["color"], ratio=data["ratio"])
-
 
 @dataclass
-class ItemDetail:
+class ItemDetail(_FromDict):
     id: str
     name: str
-    size: int
-    ext: str
-    tags: list[str]
-    folders: list[str]
-    is_deleted: bool
-    url: str
-    annotation: str
-    modification_time: int
-    width: int
-    height: int
-    no_thumbnail: bool
-    last_modified: int
-    palettes: list[Palette]
+    size: int = 0
+    ext: str = ""
+    tags: list[str] = field(default_factory=list)
+    folders: list[str] = field(default_factory=list)
+    is_deleted: bool = False
+    url: str = ""
+    annotation: str = ""
+    modification_time: int = 0
+    width: int = 0
+    height: int = 0
+    no_thumbnail: bool = False
+    last_modified: int = 0
+    palettes: list[Palette] = field(default_factory=list)
     star: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ItemDetail:
-        d = _convert_keys(data)
-        return cls(
-            id=d["id"],
-            name=d["name"],
-            size=d.get("size", 0),
-            ext=d.get("ext", ""),
-            tags=d.get("tags", []),
-            folders=d.get("folders", []),
-            is_deleted=d.get("is_deleted", False),
-            url=d.get("url", ""),
-            annotation=d.get("annotation", ""),
-            modification_time=d.get("modification_time", 0),
-            width=d.get("width", 0),
-            height=d.get("height", 0),
-            no_thumbnail=d.get("no_thumbnail", False),
-            last_modified=d.get("last_modified", 0),
-            palettes=[Palette.from_dict(p) for p in d.get("palettes", [])],
-            star=d.get("star"),
-        )
+        data = {
+            **data,
+            "palettes": [Palette.from_dict(p) for p in data.get("palettes", [])],
+        }
+        return super().from_dict(data)
 
 
 @dataclass
-class AddItemResult:
+class AddItemResult(_FromDict):
     id: str
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> AddItemResult:
-        d = _convert_keys(data)
-        return cls(id=d["id"])
-
 
 @dataclass
-class AddItemsResult:
-    ids: list[str]
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> AddItemsResult:
-        d = _convert_keys(data)
-        return cls(ids=d.get("ids", []))
+class AddItemsResult(_FromDict):
+    ids: list[str] = field(default_factory=list)
 
 
 # ──────────────────────────────────────────────
@@ -126,59 +105,29 @@ class AddItemsResult:
 
 
 @dataclass
-class Folder:
+class Folder(_FromDict):
     id: str
     name: str
-    images: list[Any]
-    folders: list[Any]
-    modification_time: int
-    tags: list[str]
-    children: list[Any]
-    is_expand: bool
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Folder:
-        d = _convert_keys(data)
-        return cls(
-            id=d["id"],
-            name=d["name"],
-            images=d.get("images", []),
-            folders=d.get("folders", []),
-            modification_time=d.get("modification_time", 0),
-            tags=d.get("tags", []),
-            children=d.get("children", []),
-            is_expand=d.get("is_expand", False),
-        )
+    images: list[dict[str, Any]] = field(default_factory=list)
+    folders: list[dict[str, Any]] = field(default_factory=list)
+    modification_time: int = 0
+    tags: list[str] = field(default_factory=list)
+    children: list[dict[str, Any]] = field(default_factory=list)
+    is_expand: bool = False
 
 
 @dataclass
-class FolderListItem:
+class FolderListItem(_FromDict):
     id: str
     name: str
-    description: str
-    children: list[Any]
-    modification_time: int
-    tags: list[str]
-    image_count: int
-    descendant_image_count: int
-    pinyin: str
-    extend_tags: list[str]
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> FolderListItem:
-        d = _convert_keys(data)
-        return cls(
-            id=d["id"],
-            name=d["name"],
-            description=d.get("description", ""),
-            children=d.get("children", []),
-            modification_time=d.get("modification_time", 0),
-            tags=d.get("tags", []),
-            image_count=d.get("image_count", 0),
-            descendant_image_count=d.get("descendant_image_count", 0),
-            pinyin=d.get("pinyin", ""),
-            extend_tags=d.get("extend_tags", []),
-        )
+    description: str = ""
+    children: list[dict[str, Any]] = field(default_factory=list)
+    modification_time: int = 0
+    tags: list[str] = field(default_factory=list)
+    image_count: int = 0
+    descendant_image_count: int = 0
+    pinyin: str = ""
+    extend_tags: list[str] = field(default_factory=list)
 
 
 # ──────────────────────────────────────────────
@@ -187,13 +136,13 @@ class FolderListItem:
 
 
 @dataclass
-class LibraryInfo:
-    folders: list[dict[str, Any]]
-    smart_folders: list[dict[str, Any]]
-    quick_access: list[dict[str, Any]]
-    tags_groups: list[dict[str, Any]]
-    modification_time: int
-    application_version: str
+class LibraryInfo(_FromDict):
+    folders: list[dict[str, Any]] = field(default_factory=list)
+    smart_folders: list[dict[str, Any]] = field(default_factory=list)
+    quick_access: list[dict[str, Any]] = field(default_factory=list)
+    tags_groups: list[dict[str, Any]] = field(default_factory=list)
+    modification_time: int = 0
+    application_version: str = ""
     # /api/library/info の data.library から取得する、現在 Eagle が開いている
     # ライブラリのネイティブパスと名前 (古い Eagle がフィールドを返さない場合は None)
     library_path: str | None = None
@@ -201,23 +150,12 @@ class LibraryInfo:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> LibraryInfo:
-        d = _convert_keys(data)
-        library = d.get("library") or {}
-        return cls(
-            folders=d.get("folders", []),
-            smart_folders=d.get("smart_folders", []),
-            quick_access=d.get("quick_access", []),
-            tags_groups=d.get("tags_groups", []),
-            modification_time=d.get("modification_time", 0),
-            application_version=d.get("application_version", ""),
-            library_path=library.get("path"),
-            library_name=library.get("name"),
-        )
+        obj = super().from_dict(data)
+        library = data.get("library") or {}
+        obj.library_path = library.get("path")
+        obj.library_name = library.get("name")
+        return obj
 
-
-# ──────────────────────────────────────────────
-# Parameter TypedDicts
-# ──────────────────────────────────────────────
 
 # ──────────────────────────────────────────────
 # Tag
@@ -225,19 +163,10 @@ class LibraryInfo:
 
 
 @dataclass
-class TagInfo:
-    name: str
-    count: int
-    starred: bool
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> TagInfo:
-        d = _convert_keys(data)
-        return cls(
-            name=d.get("name", ""),
-            count=d.get("count", 0),
-            starred=d.get("starred", False),
-        )
+class TagInfo(_FromDict):
+    name: str = ""
+    count: int = 0
+    starred: bool = False
 
 
 # ──────────────────────────────────────────────
@@ -246,21 +175,11 @@ class TagInfo:
 
 
 @dataclass
-class TagGroupInfo:
+class TagGroupInfo(_FromDict):
     id: str
-    name: str
-    tags: list[str]
-    color: str
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> TagGroupInfo:
-        d = _convert_keys(data)
-        return cls(
-            id=d["id"],
-            name=d.get("name", ""),
-            tags=d.get("tags", []),
-            color=d.get("color", ""),
-        )
+    name: str = ""
+    tags: list[str] = field(default_factory=list)
+    color: str = ""
 
 
 # ──────────────────────────────────────────────
@@ -273,6 +192,7 @@ class AddItemFromUrlParam(TypedDict, total=False):
     name: Required[str]
     website: str
     tags: list[str]
+    star: int
     annotation: str
     modification_time: int
     headers: dict[str, str]

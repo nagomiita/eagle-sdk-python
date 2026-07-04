@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
+from eagle_sdk._util import compact_body
 from eagle_sdk.models import (
     AddItemFromPathParam,
     AddItemFromUrlParam,
@@ -16,13 +17,16 @@ if TYPE_CHECKING:
 
 
 def _build_item_url_body(param: AddItemFromUrlParam) -> dict[str, Any]:
-    body: dict[str, Any] = {"url": param["url"], "name": param["name"]}
-    for key in ("website", "tags", "annotation", "headers"):
-        if key in param:
-            body[key] = param[key]
-    if "modification_time" in param:
-        body["modificationTime"] = param["modification_time"]
-    return body
+    return compact_body(
+        url=param["url"],
+        name=param["name"],
+        website=param.get("website"),
+        tags=param.get("tags"),
+        star=param.get("star"),
+        annotation=param.get("annotation"),
+        modification_time=param.get("modification_time"),
+        headers=param.get("headers"),
+    )
 
 
 def _resolve_item_folders(
@@ -44,17 +48,18 @@ def _build_item_path_body(
     *,
     folder_id: str | None = None,
 ) -> dict[str, Any]:
-    body: dict[str, Any] = {"path": param["path"], "name": param["name"]}
-    for key in ("id", "website", "tags", "annotation"):
-        if key in param:
-            body[key] = param[key]
-    folders = _resolve_item_folders(
-        folder_id=folder_id,
-        folders=param.get("folders"),
+    return compact_body(
+        path=param["path"],
+        name=param["name"],
+        id=param.get("id"),
+        website=param.get("website"),
+        tags=param.get("tags"),
+        annotation=param.get("annotation"),
+        folders=_resolve_item_folders(
+            folder_id=folder_id,
+            folders=param.get("folders"),
+        ),
     )
-    if folders is not None:
-        body["folders"] = folders
-    return body
 
 
 class ItemAPI:
@@ -74,21 +79,17 @@ class ItemAPI:
         folder_id: str | None = None,
         headers: dict[str, str] | None = None,
     ) -> None:
-        body: dict[str, Any] = {"url": url, "name": name}
-        if website is not None:
-            body["website"] = website
-        if tags is not None:
-            body["tags"] = tags
-        if star is not None:
-            body["star"] = star
-        if annotation is not None:
-            body["annotation"] = annotation
-        if modification_time is not None:
-            body["modificationTime"] = modification_time
-        if folder_id is not None:
-            body["folderId"] = folder_id
-        if headers is not None:
-            body["headers"] = headers
+        body = compact_body(
+            url=url,
+            name=name,
+            website=website,
+            tags=tags,
+            star=star,
+            annotation=annotation,
+            modification_time=modification_time,
+            folder_id=folder_id,
+            headers=headers,
+        )
         self._http.post("/api/item/addFromURL", json=body)
 
     def add_from_urls(
@@ -97,11 +98,10 @@ class ItemAPI:
         *,
         folder_id: str | None = None,
     ) -> None:
-        body: dict[str, Any] = {
-            "items": [_build_item_url_body(item) for item in items],
-        }
-        if folder_id is not None:
-            body["folderId"] = folder_id
+        body = compact_body(
+            items=[_build_item_url_body(item) for item in items],
+            folder_id=folder_id,
+        )
         self._http.post("/api/item/addFromURLs", json=body)
 
     def add_from_path(
@@ -116,18 +116,15 @@ class ItemAPI:
         folder_id: str | None = None,
         folders: list[str] | None = None,
     ) -> AddItemResult:
-        body: dict[str, Any] = {"path": path, "name": name}
-        if id is not None:
-            body["id"] = id
-        if website is not None:
-            body["website"] = website
-        if annotation is not None:
-            body["annotation"] = annotation
-        if tags is not None:
-            body["tags"] = tags
-        resolved_folders = _resolve_item_folders(folder_id=folder_id, folders=folders)
-        if resolved_folders is not None:
-            body["folders"] = resolved_folders
+        body = compact_body(
+            path=path,
+            name=name,
+            id=id,
+            website=website,
+            annotation=annotation,
+            tags=tags,
+            folders=_resolve_item_folders(folder_id=folder_id, folders=folders),
+        )
         resp = self._http.post("/api/v2/item/add", json=body)
         return AddItemResult.from_dict(resp["data"])
 
@@ -155,15 +152,14 @@ class ItemAPI:
         modification_time: int | None = None,
         folder_id: str | None = None,
     ) -> None:
-        body: dict[str, Any] = {"url": url, "name": name}
-        if base64 is not None:
-            body["base64"] = base64
-        if tags is not None:
-            body["tags"] = tags
-        if modification_time is not None:
-            body["modificationTime"] = modification_time
-        if folder_id is not None:
-            body["folderId"] = folder_id
+        body = compact_body(
+            url=url,
+            name=name,
+            base64=base64,
+            tags=tags,
+            modification_time=modification_time,
+            folder_id=folder_id,
+        )
         self._http.post("/api/item/addBookmark", json=body)
 
     def info(self, id: str) -> ItemDetail:
@@ -184,17 +180,14 @@ class ItemAPI:
         star: int | None = None,
         folders: list[str] | None = None,
     ) -> ItemDetail:
-        body: dict[str, Any] = {"id": id}
-        if tags is not None:
-            body["tags"] = tags
-        if annotation is not None:
-            body["annotation"] = annotation
-        if url is not None:
-            body["url"] = url
-        if star is not None:
-            body["star"] = star
-        if folders is not None:
-            body["folders"] = folders
+        body = compact_body(
+            id=id,
+            tags=tags,
+            annotation=annotation,
+            url=url,
+            star=star,
+            folders=folders,
+        )
         resp = self._http.post("/api/v2/item/update", json=body)
         return ItemDetail.from_dict(resp["data"])
 
@@ -205,11 +198,7 @@ class ItemAPI:
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[ItemDetail]:
-        body: dict[str, Any] = {"keyword": keyword}
-        if limit is not None:
-            body["limit"] = limit
-        if offset is not None:
-            body["offset"] = offset
+        body = compact_body(keyword=keyword, limit=limit, offset=offset)
         resp = self._http.post("/api/v2/item/query", json=body)
         return [ItemDetail.from_dict(item) for item in resp["data"]]
 
@@ -234,21 +223,15 @@ class ItemAPI:
         tags: str | None = None,
         folders: str | None = None,
     ) -> list[ItemDetail]:
-        params: dict[str, Any] = {}
-        if limit is not None:
-            params["limit"] = limit
-        if offset is not None:
-            params["offset"] = offset
-        if order_by is not None:
-            params["orderBy"] = order_by
-        if keyword is not None:
-            params["keyword"] = keyword
-        if ext is not None:
-            params["ext"] = ext
-        if tags is not None:
-            params["tags"] = tags
-        if folders is not None:
-            params["folders"] = folders
+        params = compact_body(
+            limit=limit,
+            offset=offset,
+            order_by=order_by,
+            keyword=keyword,
+            ext=ext,
+            tags=tags,
+            folders=folders,
+        )
         resp = self._http.get("/api/item/list", params=params or None)
         return [ItemDetail.from_dict(item) for item in resp["data"]]
 

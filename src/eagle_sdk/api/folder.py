@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
+from eagle_sdk._util import compact_body
 from eagle_sdk.models import Folder, FolderListItem
 
 if TYPE_CHECKING:
@@ -18,9 +19,7 @@ class FolderAPI:
         *,
         parent: str | None = None,
     ) -> Folder:
-        body: dict[str, Any] = {"folderName": folder_name}
-        if parent is not None:
-            body["parent"] = parent
+        body = compact_body(folder_name=folder_name, parent=parent)
         resp = self._http.post("/api/folder/create", json=body)
         return Folder.from_dict(resp["data"])
 
@@ -39,13 +38,12 @@ class FolderAPI:
         new_description: str | None = None,
         new_color: str | None = None,
     ) -> Folder:
-        body: dict[str, Any] = {"folderId": folder_id}
-        if new_name is not None:
-            body["newName"] = new_name
-        if new_description is not None:
-            body["newDescription"] = new_description
-        if new_color is not None:
-            body["newColor"] = new_color
+        body = compact_body(
+            folder_id=folder_id,
+            new_name=new_name,
+            new_description=new_description,
+            new_color=new_color,
+        )
         resp = self._http.post("/api/folder/update", json=body)
         return Folder.from_dict(resp["data"])
 
