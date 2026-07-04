@@ -41,6 +41,24 @@ class TestTransportErrors:
         with pytest.raises(EagleConnectionError):
             client.application.info()
 
+    def test_read_error_raises_eagle_connection_error(self, httpx_mock: HTTPXMock):
+        httpx_mock.add_exception(httpx.ReadError("connection reset"))
+
+        client = EagleClient()
+        with pytest.raises(EagleConnectionError):
+            client.application.info()
+
+    def test_remote_protocol_error_raises_eagle_connection_error(
+        self, httpx_mock: HTTPXMock
+    ):
+        httpx_mock.add_exception(
+            httpx.RemoteProtocolError("illegal request line")
+        )
+
+        client = EagleClient()
+        with pytest.raises(EagleConnectionError):
+            client.application.info()
+
     def test_get_bytes_timeout_raises_eagle_timeout_error(
         self, httpx_mock: HTTPXMock
     ):

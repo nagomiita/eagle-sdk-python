@@ -112,6 +112,14 @@ class HttpClient:
             raise EagleConnectionError(
                 "Cannot connect to Eagle. Is the app running?"
             ) from e
+        except httpx.RequestError as e:
+            # ReadError / RemoteProtocolError / ProxyError 等の残りの transport
+            # 系も SDK 例外に統一する (メッセージ中の URL は token をマスク)
+            raise EagleConnectionError(
+                f"Transport error while talking to Eagle:"
+                f" {method} {path}: {type(e).__name__}:"
+                f" {_mask_token_in_url(str(e))}"
+            ) from e
 
         try:
             response.raise_for_status()
