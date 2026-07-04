@@ -6,7 +6,11 @@ from typing import Any
 
 import httpx
 
-from eagle_sdk.exceptions import EagleApiError, EagleConnectionError
+from eagle_sdk.exceptions import (
+    EagleApiError,
+    EagleConnectionError,
+    EagleTimeoutError,
+)
 
 logger = logging.getLogger("eagle_sdk.http")
 
@@ -37,6 +41,20 @@ class _TokenMaskingFilter(logging.Filter):
         return True
 
 
+def _ensure_httpx_token_masking() -> None:
+    """httpx logger に token マスクフィルタを 1 度だけ登録する。
+
+    ``logging.getLogger("httpx")`` はプロセス内シングルトンのため、クライアント
+    生成のたびに ``addFilter`` すると filter インスタンスが累積する (#2)。
+    既登録なら何もしない。``setLevel`` はプロセス全体の httpx ログ設定を変える
+    global 副作用になるため行わない (httpx 自身の INFO ログもこの filter で
+    マスクされる)。
+    """
+    httpx_logger = logging.getLogger("httpx")
+    if not any(isinstance(f, _TokenMaskingFilter) for f in httpx_logger.filters):
+        httpx_logger.addFilter(_TokenMaskingFilter())
+
+
 def _log_request(request: httpx.Request) -> None:
     logger.info("HTTP Request: %s %s", request.method, _mask_token_in_url(request.url))
 
@@ -56,9 +74,7 @@ class HttpClient:
         event_hooks: dict[str, list[Any]] = {}
         if token:
             params = {"token": token}
-            httpx_logger = logging.getLogger("httpx")
-            httpx_logger.setLevel(logging.WARNING)
-            httpx_logger.addFilter(_TokenMaskingFilter())
+            _ensure_httpx_token_masking()
             event_hooks = {
                 "request": [_log_request],
                 "response": [_log_response],
@@ -72,17 +88,44 @@ class HttpClient:
         return self._request("GET", path, params=params)
 
     def get_bytes(self, path: str, params: dict[str, Any] | None = None) -> bytes:
+        return self._send("GET", path, params=params).content
+
+    def post(self, path: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self._request("POST", path, json=json)
+
+    def _send(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """リクエストを送信し、transport / HTTP ステータス起因の失敗を
+        SDK 例外 (``EagleError`` 系) に変換して返す。"""
         try:
-            response = self._client.get(path, params=params)
-            response.raise_for_status()
-            return response.content
+            response = self._client.request(method, path, params=params, json=json)
+        except httpx.TimeoutException as e:
+            raise EagleTimeoutError(
+                f"Request to Eagle timed out: {method} {path}"
+            ) from e
         except httpx.ConnectError as e:
             raise EagleConnectionError(
                 "Cannot connect to Eagle. Is the app running?"
             ) from e
 
-    def post(self, path: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self._request("POST", path, json=json)
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            # httpx.HTTPStatusError の str には ?token=... 入りの完全 URL が
+            # 含まれるため、チェーンせずマスク済みメッセージで raise する
+            raise EagleApiError(
+                "http_error",
+                f"Eagle API returned HTTP {response.status_code}"
+                f" {response.reason_phrase}:"
+                f" {method} {_mask_token_in_url(response.request.url)}",
+                status_code=response.status_code,
+            ) from None
+        return response
 
     def _request(
         self,
@@ -91,17 +134,30 @@ class HttpClient:
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        response = self._send(method, path, params=params, json=json)
+
         try:
-            response = self._client.request(method, path, params=params, json=json)
-            response.raise_for_status()
-        except httpx.ConnectError as e:
-            raise EagleConnectionError(
-                "Cannot connect to Eagle. Is the app running?"
+            data: dict[str, Any] = response.json()
+        except ValueError as e:
+            raise EagleApiError(
+                "invalid_response",
+                f"Eagle API returned a non-JSON response"
+                f" (HTTP {response.status_code}): {method} {path}",
+                status_code=response.status_code,
             ) from e
 
-        data: dict[str, Any] = response.json()
         if data.get("status") != "success":
-            raise EagleApiError(data.get("status", "unknown"))
+            status = data.get("status", "unknown")
+            detail = data.get("message") or data.get("data")
+            message = f"Eagle API error: {status}"
+            if detail:
+                message = f"{message} - {detail}"
+            raise EagleApiError(
+                status,
+                message,
+                status_code=response.status_code,
+                data=data,
+            )
         return data
 
     def close(self) -> None:
