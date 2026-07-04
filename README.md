@@ -47,6 +47,32 @@ print(result.id)
 items = client.item.list(limit=50, tags="design")
 ```
 
+## 接続の再利用とリトライ
+
+`EagleClient` は httpx.Client（TCP コネクションプール）を 1 個保持します。**リクエストのたびに生成せず、プロセス内で使い回してください**（httpx.Client 準拠でスレッドセーフ）。毎回生成すると keep-alive が効かず、呼び出しごとに TCP ハンドシェイクが発生します。
+
+```python
+# OK: プロセスで 1 個を共有し、終了時に close
+client = EagleClient(token="...")
+...
+client.close()
+
+# OK: 短命スクリプトはコンテキストマネージャで
+with EagleClient(token="...") as client:
+    info = client.library.info()
+
+# NG: 呼び出しのたびに生成（keep-alive が効かない）
+def fetch():
+    return EagleClient(token="...").library.info()
+```
+
+Eagle アプリの起動直後・高負荷時の一時的な接続拒否を吸収したい場合は、opt-in の connect リトライを指定できます（送信済みリクエストの再送は行わないため冪等性の心配はありません）:
+
+```python
+client = EagleClient(token="...", retries=2)          # connect 失敗を最大2回リトライ
+client = EagleClient(limits=httpx.Limits(max_connections=5))  # プール設定の上書き
+```
+
 ## エラーハンドリング
 
 SDK の public API から送出される例外はすべて `EagleError` のサブクラスに統一されています（httpx の例外は透過しません）。
