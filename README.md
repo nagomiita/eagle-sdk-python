@@ -47,6 +47,39 @@ print(result.id)
 items = client.item.list(limit=50, tags="design")
 ```
 
+## エラーハンドリング
+
+SDK の public API から送出される例外はすべて `EagleError` のサブクラスに統一されています（httpx の例外は透過しません）。
+
+| 例外 | 発生条件 |
+|------|---------|
+| `EagleConnectionError` | Eagle に接続できない（アプリ未起動等） |
+| `EagleTimeoutError` | タイムアウト（`EagleConnectionError` のサブクラス） |
+| `EagleApiError` | HTTP 4xx/5xx（`status="http_error"`）、非 JSON レスポンス（`status="invalid_response"`）、API エラーボディ（`status` は API の返す値） |
+
+`EagleApiError` は `status_code`（HTTP ステータスコード）と `data`（レスポンスボディ）を属性に持ちます。トークン認証エラーの判別例:
+
+```python
+from eagle_sdk import EagleApiError, EagleClient, EagleConnectionError
+
+client = EagleClient(token="...")
+try:
+    library = client.library.info()
+except EagleApiError as e:
+    if e.status_code in (401, 403):
+        print("API トークンが正しくありません")
+    else:
+        raise
+except EagleConnectionError:
+    print("Eagle が起動していません")
+```
+
+例外メッセージ中の URL はトークンをマスク（`token=***`）済みのため、そのままログに出力できます。
+
+### ログ
+
+`EagleClient(token=...)` を生成すると、`httpx` logger にトークンマスク用フィルタが 1 度だけ登録されます（logger の level は変更しません）。SDK 自身のリクエストログは `eagle_sdk.http` logger に INFO で出力され、URL 中のトークンはマスクされます。
+
 ## API リファレンス
 
 公式APIドキュメント: https://api.eagle.cool/
