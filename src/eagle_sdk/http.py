@@ -69,7 +69,14 @@ def _log_response(response: httpx.Response) -> None:
 
 
 class HttpClient:
-    def __init__(self, base_url: str, timeout: float, token: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        timeout: float,
+        token: str | None = None,
+        retries: int = 0,
+        limits: httpx.Limits | None = None,
+    ) -> None:
         params: dict[str, str] | None = None
         event_hooks: dict[str, list[Any]] = {}
         if token:
@@ -79,9 +86,17 @@ class HttpClient:
                 "request": [_log_request],
                 "response": [_log_response],
             }
+        # retries は connect レベルのリトライのみ (httpx.HTTPTransport 準拠)。
+        # 送信済みリクエストの再送は行わないため副作用の心配はない。
+        # limits を transport に渡すのは、httpx.Client は transport 指定時に
+        # 自身の limits 引数を無視するため。
+        transport_kwargs: dict[str, Any] = {"retries": retries}
+        if limits is not None:
+            transport_kwargs["limits"] = limits
         self._client = httpx.Client(
             base_url=base_url, timeout=timeout, params=params,
             event_hooks=event_hooks,
+            transport=httpx.HTTPTransport(**transport_kwargs),
         )
 
     def get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
