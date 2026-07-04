@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Required, TypedDict
 
 
+# キーは API レスポンスの固定語彙 (modificationTime 等の十数種) なので
+# ヒット率はほぼ 100%。大量アイテムのデシリアライズで regex 評価を
+# 初回のみにする (#4)。
+@lru_cache(maxsize=1024)
 def _to_snake_case(name: str) -> str:
     return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name).lower()
 
@@ -16,6 +21,7 @@ def _convert_keys(data: dict[str, Any]) -> dict[str, Any]:
 # ──────────────────────────────────────────────
 # Application
 # ──────────────────────────────────────────────
+
 
 @dataclass
 class ApplicationInfo:
@@ -40,6 +46,7 @@ class ApplicationInfo:
 # ──────────────────────────────────────────────
 # Item
 # ──────────────────────────────────────────────
+
 
 @dataclass
 class Palette:
@@ -117,6 +124,7 @@ class AddItemsResult:
 # Folder
 # ──────────────────────────────────────────────
 
+
 @dataclass
 class Folder:
     id: str
@@ -177,6 +185,7 @@ class FolderListItem:
 # Library
 # ──────────────────────────────────────────────
 
+
 @dataclass
 class LibraryInfo:
     folders: list[dict[str, Any]]
@@ -214,6 +223,7 @@ class LibraryInfo:
 # Tag
 # ──────────────────────────────────────────────
 
+
 @dataclass
 class TagInfo:
     name: str
@@ -233,6 +243,7 @@ class TagInfo:
 # ──────────────────────────────────────────────
 # Tag Group
 # ──────────────────────────────────────────────
+
 
 @dataclass
 class TagGroupInfo:
@@ -255,6 +266,7 @@ class TagGroupInfo:
 # ──────────────────────────────────────────────
 # Parameter TypedDicts
 # ──────────────────────────────────────────────
+
 
 class AddItemFromUrlParam(TypedDict, total=False):
     url: Required[str]

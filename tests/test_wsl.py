@@ -2,6 +2,8 @@ import socket
 
 from unittest.mock import mock_open, patch
 
+import pytest
+
 from eagle_sdk.wsl import (
     _get_wsl_gateway,
     _is_port_open,
@@ -9,7 +11,21 @@ from eagle_sdk.wsl import (
     resolve_base_url,
 )
 
-PROC_VERSION_WSL = "Linux version 5.15.0-1 (microsoft@microsoft.com) (gcc) #1 SMP x86_64 GNU/Linux\n"
+
+@pytest.fixture(autouse=True)
+def _clear_wsl_caches():
+    # _is_wsl / _get_wsl_gateway は lru_cache 化されている (#4)。テストごとに
+    # クリアしないと builtins.open の patch 内容がキャッシュ越しに漏れる
+    _is_wsl.cache_clear()
+    _get_wsl_gateway.cache_clear()
+    yield
+    _is_wsl.cache_clear()
+    _get_wsl_gateway.cache_clear()
+
+
+PROC_VERSION_WSL = (
+    "Linux version 5.15.0-1 (microsoft@microsoft.com) (gcc) #1 SMP x86_64 GNU/Linux\n"
+)
 PROC_VERSION_NATIVE = "Linux version 6.1.0-9-amd64 (debian-kernel@lists.debian.org)\n"
 
 PROC_NET_ROUTE = """\

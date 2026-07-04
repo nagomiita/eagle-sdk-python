@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
 from eagle_sdk.models import (
@@ -250,6 +251,41 @@ class ItemAPI:
             params["folders"] = folders
         resp = self._http.get("/api/item/list", params=params or None)
         return [ItemDetail.from_dict(item) for item in resp["data"]]
+
+    def iter_all(
+        self,
+        *,
+        page_size: int = 200,
+        order_by: str | None = None,
+        keyword: str | None = None,
+        ext: str | None = None,
+        tags: str | None = None,
+        folders: str | None = None,
+    ) -> Iterator[ItemDetail]:
+        """条件に一致する item をページングしながら順に yield する (#4)。
+
+        呼び出し側が ``count_all()`` + ``list(limit=total)`` で全件を 1 レスポンス
+        に載せる必要をなくす。Eagle API の ``/api/item/list`` の ``offset`` は
+        「ページ番号」(``limit`` 単位) の意味論なので、ページ番号を進めながら
+        取得し、``page_size`` 未満のページが返ったら終端とみなす。
+        """
+        if page_size <= 0:
+            raise ValueError("page_size must be positive")
+        page = 0
+        while True:
+            items = self.list(
+                limit=page_size,
+                offset=page,
+                order_by=order_by,
+                keyword=keyword,
+                ext=ext,
+                tags=tags,
+                folders=folders,
+            )
+            yield from items
+            if len(items) < page_size:
+                return
+            page += 1
 
     def move_to_trash(self, item_ids: list[str]) -> None:
         self._http.post("/api/item/moveToTrash", json={"itemIds": item_ids})

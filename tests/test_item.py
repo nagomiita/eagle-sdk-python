@@ -318,3 +318,86 @@ class TestItemApiError:
 
         with pytest.raises(EagleApiError):
             client.item.info("BAD")
+
+
+class TestItemIterAll:
+    def _page(self, n: int) -> list[dict]:
+        return [{**ITEM_RESPONSE, "id": f"ID{n}_{i}"} for i in range(n)]
+
+    def test_paginates_until_short_page(
+        self, client: EagleClient, httpx_mock: HTTPXMock
+    ):
+        # page_size=2: 満杯ページ2枚 + 端数1件で終端
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/item/list?limit=2&offset=0",
+            json={"status": "success", "data": self._page(2)},
+        )
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/item/list?limit=2&offset=1",
+            json={"status": "success", "data": self._page(2)},
+        )
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/item/list?limit=2&offset=2",
+            json={"status": "success", "data": self._page(1)},
+        )
+
+        items = list(client.item.iter_all(page_size=2))
+
+        assert len(items) == 5
+        # offset はページ番号として 0,1,2 と進む
+        offsets = [r.url.params["offset"] for r in httpx_mock.get_requests()]
+        assert offsets == ["0", "1", "2"]
+
+    def test_stops_immediately_on_empty_first_page(
+        self, client: EagleClient, httpx_mock: HTTPXMock
+    ):
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/item/list?limit=200&offset=0",
+            json={"status": "success", "data": []},
+        )
+
+        assert list(client.item.iter_all()) == []
+        assert len(httpx_mock.get_requests()) == 1
+
+    def test_exact_multiple_ends_with_empty_page(
+        self, client: EagleClient, httpx_mock: HTTPXMock
+    ):
+        # 総数がページサイズの倍数 → 追加の空ページで終端を検知
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/item/list?limit=2&offset=0",
+            json={"status": "success", "data": self._page(2)},
+        )
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/item/list?limit=2&offset=1",
+            json={"status": "success", "data": []},
+        )
+
+        assert len(list(client.item.iter_all(page_size=2))) == 2
+
+    def test_filters_are_passed_through(
+        self, client: EagleClient, httpx_mock: HTTPXMock
+    ):
+        httpx_mock.add_response(json={"status": "success", "data": []})
+
+        list(client.item.iter_all(page_size=10, folders="FOLDER1", ext="png"))
+
+        params = httpx_mock.get_request().url.params
+        assert params["folders"] == "FOLDER1"
+        assert params["ext"] == "png"
+        assert params["limit"] == "10"
+
+    def test_rejects_non_positive_page_size(self, client: EagleClient):
+        with pytest.raises(ValueError):
+            next(client.item.iter_all(page_size=0))
+
+    def test_is_lazy_iterator(self, client: EagleClient, httpx_mock: HTTPXMock):
+        httpx_mock.add_response(
+            url="http://localhost:41595/api/item/list?limit=1&offset=0",
+            json={"status": "success", "data": self._page(1) + self._page(0)},
+        )
+
+        it = client.item.iter_all(page_size=1)
+        # イテレータ生成時点ではリクエストしない
+        assert len(httpx_mock.get_requests()) == 0
+        next(it)
+        assert len(httpx_mock.get_requests()) == 1

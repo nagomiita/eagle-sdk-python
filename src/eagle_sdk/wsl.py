@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import socket
+from functools import lru_cache
 
 _DEFAULT_PORT = 41595
 _PROBE_TIMEOUT = 0.5
 
 
+# ネットワーク構成 (WSL か否か / default gateway) はプロセス生存中に変わらない
+# 前提で /proc の読み取りを初回のみにキャッシュする (#4)。テストで実体を呼ぶ
+# 場合は cache_clear() すること。
+@lru_cache(maxsize=1)
 def _is_wsl() -> bool:
     try:
         with open("/proc/version") as f:
@@ -14,6 +19,7 @@ def _is_wsl() -> bool:
         return False
 
 
+@lru_cache(maxsize=1)
 def _get_wsl_gateway() -> str | None:
     try:
         with open("/proc/net/route") as f:
@@ -22,8 +28,7 @@ def _get_wsl_gateway() -> str | None:
                 if len(fields) >= 3 and fields[1] == "00000000":
                     gw_hex = fields[2]
                     return ".".join(
-                        str(int(gw_hex[i : i + 2], 16))
-                        for i in range(6, -1, -2)
+                        str(int(gw_hex[i : i + 2], 16)) for i in range(6, -1, -2)
                     )
     except (FileNotFoundError, PermissionError, IndexError, ValueError):
         return None
